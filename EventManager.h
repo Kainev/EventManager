@@ -53,8 +53,7 @@ private:
     static auto register_event()->EventID;
 
 private:
-    static inline std::vector<CallbackContainerBase*>	s_callbacks;
-    static inline std::vector<void*>					s_events;
+    static inline std::vector<std::unique_ptr<CallbackContainerBase>>	s_callbacks;
 
     static inline EventID s_next_event_id = 0u;
 };
@@ -76,7 +75,7 @@ inline void EventManager::listen(T_Instance& instance, T_Function callback)
 template<typename T, typename T_Instance, typename T_Function>
 inline void EventManager::listen(T_Instance* instance, T_Function callback)
 {
-    static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back([instance, callback](T* event) { (instance->*callback)(event); });
+    static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()].get())->callbacks.emplace_back([instance, callback](T* event) { (instance->*callback)(event); });
 }
 
 
@@ -85,7 +84,7 @@ inline void EventManager::fire(T_Args ...args)
 {
     EventID id = get_event_id<T>();
 
-    CallbackContainer<T>* callback_container = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id]);
+    CallbackContainer<T>* callback_container = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id].get());
     *callback_container->event = T{ args... };
     for (auto& callback : callback_container->callbacks)
         callback(callback_container->event);
@@ -103,7 +102,7 @@ inline EventID EventManager::get_event_id()
 template<typename T>
 inline EventID EventManager::register_event()
 {
-    s_callbacks.emplace_back(new CallbackContainer<T*>());
+    s_callbacks.emplace_back(std::make_unique<CallbackContainer<T*>>());
     
     return s_next_event_id++;
 }
