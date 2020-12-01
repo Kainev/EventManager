@@ -41,6 +41,11 @@ struct KeyPressEvent
 class InputHandler
 {
 public:
+    InputHandler()
+    {
+        EventManager::listen<KeyPressEvent>(this, &InputHandler::on_key_press);
+    }
+private:
     void on_key_press(KeyPressEvent* event)
     {
          // ...
@@ -50,7 +55,6 @@ public:
 int main()
 {
     InputHandler input_handler;
-    EventManager::listen<KeyPressEvent>(input_handler, &InputHandler::on_key_press);
     
     EventManager::fire<KeyPressEvent>(key_w);
 }
