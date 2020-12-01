@@ -2,8 +2,8 @@
 
 #include <cstdint>
 #include <vector>
-#include <functional>
 #include <memory>
+#include <functional>
 
 
 typedef std::size_t EventID;
@@ -62,14 +62,14 @@ private:
 template<typename T, typename T_Function>
 inline void EventManager::listen(T_Function callback)
 {
-    static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back(callback);
+    static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()].get())->callbacks.emplace_back(callback);
 }
 
 
 template<typename T, typename T_Instance, typename T_Function>
 inline void EventManager::listen(T_Instance& instance, T_Function callback)
 {
-    static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back([&instance, callback](T* event) { (instance.*callback)(event); });
+    static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()].get())->callbacks.emplace_back([&instance, callback](T* event) { (instance.*callback)(event); });
 }
 
 template<typename T, typename T_Instance, typename T_Function>
@@ -85,7 +85,7 @@ inline void EventManager::fire(T_Args ...args)
     EventID id = get_event_id<T>();
 
     CallbackContainer<T>* callback_container = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id].get());
-    *callback_container->event = T{ args... };
+    *callback_container->event = { args... };
     for (auto& callback : callback_container->callbacks)
         callback(callback_container->event);
 }
@@ -103,6 +103,5 @@ template<typename T>
 inline EventID EventManager::register_event()
 {
     s_callbacks.emplace_back(std::make_unique<CallbackContainer<T*>>());
-    
     return s_next_event_id++;
 }
