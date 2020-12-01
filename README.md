@@ -11,7 +11,7 @@ const int key_w = 87;
 
 struct KeyPressEvent
 {
-  int key_code;
+    int key_code;
 }
 
 void on_key_press(KeyPressEvent* event)
@@ -35,7 +35,7 @@ const int key_w = 87;
 
 struct KeyPressEvent
 {
-  int key_code;
+    int key_code;
 }
 
 class InputHandler
