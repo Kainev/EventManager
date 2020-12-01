@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <functional>
+#include <memory>
 
 
 typedef std::size_t EventID;
@@ -13,7 +14,18 @@ struct CallbackContainerBase {};
 template<typename T>
 struct CallbackContainer : CallbackContainerBase
 {
+	CallbackContainer()
+	{
+		event = new T();
+	}
+
+	~CallbackContainer()
+	{
+		delete event;
+	}
+
 	std::vector<std::function<void(T*)>> callbacks;
+	T* event;
 };
 
 
@@ -74,12 +86,10 @@ inline void EventManager::fire(T_Args ...args)
 {
 	EventID id = get_event_id<T>();
 
-	T* event = reinterpret_cast<T*>(s_events[id]);
-	*event = T{ args... };
-
-	std::vector<std::function<void(T*)>>& callbacks = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id])->callbacks;
-	for (auto& callback : callbacks)
-		callback(event);
+	CallbackContainer<T>* callback_container = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id]);
+	*callback_container->event = T{ args... };
+	for (auto& callback : callback_container->callbacks)
+		callback(callback_container->event);
 }
 
 
@@ -94,7 +104,6 @@ inline EventID EventManager::get_event_id()
 template<typename T>
 inline EventID EventManager::register_event()
 {
-	s_events.emplace_back(static_cast<void*>(new T));
 	s_callbacks.emplace_back(new CallbackContainer<T*>());
 	
 	return s_next_event_id++;
