@@ -2,46 +2,65 @@
 
 #include <cstdint>
 #include <vector>
+#include <functional>
+
 
 typedef std::size_t EventID;
+
+
+struct CallbackContainerBase {};
+	
+template<typename T>
+struct CallbackContainer : CallbackContainerBase
+{
+	std::vector<std::function<void(T*)>> callbacks;
+};
+
 
 class EventManager
 {
 public:
-	template<typename T>
-	static void listen(void(*callback)(T*));
+	template<typename T, typename T_Function>
+	static void listen(T_Function callback);
+
+	template<typename T, typename T_Instance, typename T_Function>
+	static void listen(T_Instance& instance, T_Function callback);
 
 	template<typename T, typename... T_Args>
 	static void fire(T_Args...args);
 
-	//template<typename T>
-	//static void connect();
-
 private:
 	template<typename T>
-	static EventID get_event_id();
+	static auto get_event_id()->EventID;
 
 	template<typename T>
-	static EventID register_event();
+	static auto register_event()->EventID;
 
-	static std::uint32_t get_next_event(EventID id);
+	static auto get_next_event(EventID id)->std::uint32_t;
 
 
 private:
 	static inline const std::uint32_t s_event_pool_size = 2048;
 
-	static inline std::vector<std::vector<void(*)(void*)>>	s_callbacks;
-	static inline std::vector<void*>						s_event_pools;
-	static inline std::vector<std::uint32_t>				s_pool_indexes;
+	static inline std::vector<CallbackContainerBase*>	s_callbacks;
+	static inline std::vector<void*>					s_event_pools;
+	static inline std::vector<std::uint32_t>			s_pool_indexes;
 
 	static inline EventID s_next_event_id = 0u;
 };
 
 
-template<typename T>
-inline void EventManager::listen(void(*callback)(T*))
+template<typename T, typename T_Function>
+inline void EventManager::listen(T_Function callback)
 {
-	s_callbacks[get_event_id<T>()].emplace_back(reinterpret_cast<void(*)(void*)>(callback));
+	reinterpret_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back(callback);
+}
+
+
+template<typename T, typename T_Instance, typename T_Function>
+inline void EventManager::listen(T_Instance& instance, T_Function callback)
+{
+	reinterpret_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back([&instance, callback](T* event) { (instance.*callback)(event); });
 }
 
 
@@ -52,9 +71,10 @@ inline void EventManager::fire(T_Args ...args)
 
 	T* event = &reinterpret_cast<T*>(s_event_pools[id])[get_next_event(id)];
 	*event = T{ args... };
-		
-	for (auto& callback : s_callbacks[id])
-		reinterpret_cast<void(*)(T*)>(callback)(event);
+
+	std::vector<std::function<void(T*)>>& callbacks = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id])->callbacks;
+	for (auto& callback : callbacks)
+		callback(event);
 }
 
 
@@ -71,7 +91,7 @@ inline EventID EventManager::register_event()
 {
 	s_event_pools.emplace_back(static_cast<void*>(new T[s_event_pool_size]));
 	s_pool_indexes.emplace_back(0u);
-	s_callbacks.emplace_back();
+	s_callbacks.emplace_back(new CallbackContainer<T*>());
 	
 	return s_next_event_id++;
 }
