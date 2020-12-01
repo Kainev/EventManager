@@ -26,6 +26,9 @@ public:
 	template<typename T, typename T_Instance, typename T_Function>
 	static void listen(T_Instance& instance, T_Function callback);
 
+	template<typename T, typename T_Instance, typename T_Function>
+	static void listen(T_Instance* instance, T_Function callback);
+
 	template<typename T, typename... T_Args>
 	static void fire(T_Args...args);
 
@@ -53,14 +56,20 @@ private:
 template<typename T, typename T_Function>
 inline void EventManager::listen(T_Function callback)
 {
-	reinterpret_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back(callback);
+	static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back(callback);
 }
 
 
 template<typename T, typename T_Instance, typename T_Function>
 inline void EventManager::listen(T_Instance& instance, T_Function callback)
 {
-	reinterpret_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back([&instance, callback](T* event) { (instance.*callback)(event); });
+	static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back([&instance, callback](T* event) { (instance.*callback)(event); });
+}
+
+template<typename T, typename T_Instance, typename T_Function>
+inline void EventManager::listen(T_Instance* instance, T_Function callback)
+{
+	static_cast<CallbackContainer<T>*>(s_callbacks[get_event_id<T>()])->callbacks.emplace_back([instance, callback](T* event) { (instance->*callback)(event); });
 }
 
 
