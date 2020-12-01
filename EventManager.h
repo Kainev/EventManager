@@ -39,15 +39,11 @@ private:
 	template<typename T>
 	static auto register_event()->EventID;
 
-	static auto get_next_event(EventID id)->std::uint32_t;
 
 
 private:
-	static inline const std::uint32_t s_event_pool_size = 2048;
-
 	static inline std::vector<CallbackContainerBase*>	s_callbacks;
-	static inline std::vector<void*>					s_event_pools;
-	static inline std::vector<std::uint32_t>			s_pool_indexes;
+	static inline std::vector<void*>					s_events;
 
 	static inline EventID s_next_event_id = 0u;
 };
@@ -78,7 +74,7 @@ inline void EventManager::fire(T_Args ...args)
 {
 	EventID id = get_event_id<T>();
 
-	T* event = &reinterpret_cast<T*>(s_event_pools[id])[get_next_event(id)];
+	T* event = reinterpret_cast<T*>(s_events[id]);
 	*event = T{ args... };
 
 	std::vector<std::function<void(T*)>>& callbacks = reinterpret_cast<CallbackContainer<T>*>(s_callbacks[id])->callbacks;
@@ -98,15 +94,8 @@ inline EventID EventManager::get_event_id()
 template<typename T>
 inline EventID EventManager::register_event()
 {
-	s_event_pools.emplace_back(static_cast<void*>(new T[s_event_pool_size]));
-	s_pool_indexes.emplace_back(0u);
+	s_events.emplace_back(static_cast<void*>(new T));
 	s_callbacks.emplace_back(new CallbackContainer<T*>());
 	
 	return s_next_event_id++;
-}
-
-
-inline std::uint32_t EventManager::get_next_event(EventID id)
-{
-	return s_pool_indexes[id]++ & (s_event_pool_size - 1u);
 }
