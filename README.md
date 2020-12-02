@@ -114,4 +114,4 @@ int main()
 ## Installation
 Event Manager is a single-header library so no build is required. You can either clone or directly download the repository and place `EventManager.h` in your include folder.
 
-From here it is as simple as `#include "EventManager.h` and you're ready to go.
+From here it is as simple as `#include "EventManager.h"` and you're ready to go.
